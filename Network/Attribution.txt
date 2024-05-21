@@ -1,0 +1,6 @@
+Attribution
+
+
+stefanstranger.github.io
+KQLGetallSubnets.kql
+KQLGetSubnetsandRemainingIPs.kql
