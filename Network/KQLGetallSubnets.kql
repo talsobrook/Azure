@@ -1,0 +1,20 @@
+resources
+| join kind=leftouter(
+    resourcecontainers 
+    | where type =~ 'microsoft.resources/subscriptions' 
+    | project subscriptionName=name, subscriptionId
+) on subscriptionId
+| where type =~ 'microsoft.network/virtualNetworks'
+| extend addressPrefixes=array_length(properties.addressSpace.addressPrefixes)
+| extend vNetAddressSpace=properties.addressSpace.addressPrefixes
+| mv-expand subnet=properties.subnets
+| extend virtualNetwork = name
+| extend subnetPrefix = subnet.properties.addressPrefix
+| extend subnets = properties.subnets
+| extend subnetName = tostring(subnet.name)
+| extend prefixLength = toint(split(subnetPrefix, "/")[1])
+| extend addressPrefix = split(subnetPrefix, "/")[0]
+| extend numberOfIpAddresses = trim_end(".0",tostring(pow(2, 32 - prefixLength) - 5))
+| extend startIp = strcat(strcat_array((array_slice(split(addressPrefix, '.'), 0, 2)),"."), ".", tostring(0))
+| extend endIp = strcat(strcat_array((array_slice(split(addressPrefix, '.'), 0, 2)),"."), ".", trim_end(".0",tostring(pow(2, 32 - prefixLength) - 5))) 
+| project subscriptionName, resourceGroup, location, virtualNetwork, subnetPrefix, subnetName, prefixLength, numberOfIpAddresses, startIp, endIp
