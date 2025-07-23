@@ -1,0 +1,44 @@
+# Prerequisite: Az.Accounts and Az.Network modules
+Connect-AzAccount
+
+# Optional: Clear context to avoid stale sessions
+Clear-AzContext -Force
+
+# Get all subscriptions the user has access to
+$subscriptions = Get-AzSubscription
+
+# Store results
+$allGateways = @()
+
+foreach ($sub in $subscriptions) {
+    Write-Host "Checking subscription: $($sub.Name)" -ForegroundColor Cyan
+    Set-AzContext -SubscriptionId $sub.Id | Out-Null
+
+    try {
+        $gateways = Get-AzVirtualNetworkGateway
+        foreach ($gw in $gateways) {
+            $allGateways += [PSCustomObject]@{
+                SubscriptionName = $sub.Name
+                SubscriptionId   = $sub.Id
+                ResourceGroup    = $gw.ResourceGroupName
+                GatewayName      = $gw.Name
+                Location         = $gw.Location
+                Sku              = $gw.Sku.Name
+                GatewayType      = $gw.GatewayType
+                VpnType          = $gw.VpnType
+                EnableActiveActive = $gw.EnableActiveActive
+                EnableBgp        = $gw.EnableBgp
+                ZoneRedundant    = $gw.Zone -ne $null -and $gw.Zone.Count -gt 0
+                Zones            = $gw.Zone -join ","
+            }
+        }
+    } catch {
+        Write-Warning "Failed to query gateways in subscription: $($sub.Name) - $_"
+    }
+}
+
+# Output in a readable table
+$allGateways | Format-Table -AutoSize
+
+# Optional: Export to CSV
+$allGateways | Export-Csv "All-VNet-Gateways.csv" -NoTypeInformation
